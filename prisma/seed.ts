@@ -6,10 +6,20 @@
  *
  * Note: passwordHash below is a bcrypt hash of "admin1234" with cost factor 12
  * (minimum required per CON-5 auth spec). This seed is for development only.
+ *
+ * Prisma 7 requires the driver adapter to be passed to PrismaClient.
  */
 import { PrismaClient, RoomType, RoomStatus, UserRole } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error("DATABASE_URL is not set. Aborting seed.");
+  process.exit(1);
+}
+
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("🌱 Seeding database...");
