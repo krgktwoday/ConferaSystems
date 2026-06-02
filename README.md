@@ -17,59 +17,85 @@ A multi-tenant SaaS platform for hotels and conference venues to manage faciliti
 ### Prerequisites
 
 - Node.js 22+
-- PostgreSQL 15+ running locally (or use [Railway](https://railway.app) / [Supabase](https://supabase.com))
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for the local PostgreSQL instance)
 
-### 1. Clone and install
+### Quick start (Docker — recommended)
 
 ```bash
+# 1. Clone and install
 git clone <repo-url>
-cd hotel-platform
+cd ConferaSystems
 npm install
+
+# 2. Copy env file — Docker values are pre-filled, no editing needed
+cp .env.example .env.local
+
+# 3. Start Postgres, apply migrations, seed, and launch dev server in one step
+npm run dev:local
 ```
 
-### 2. Configure environment
+Open [http://localhost:3000](http://localhost:3000).  
+Demo credentials: `admin@granddemo.local` / `admin1234`
+
+### Step-by-step (manual Docker)
 
 ```bash
-cp .env.example .env
-```
+# Start Postgres container
+npm run docker:up          # or: docker compose up -d
 
-Edit `.env` and set your `DATABASE_URL`:
-
-```
-DATABASE_URL="postgresql://user:password@localhost:5432/hotel_platform?schema=public"
-```
-
-### 3. Set up the database
-
-```bash
-# Apply Prisma migrations and generate client
+# Apply migrations and seed
 npm run db:migrate
+npm run db:seed
 
-# (Optional) Open Prisma Studio to browse data
-npm run db:studio
-```
-
-### 4. Start the dev server
-
-```bash
+# Start Next.js
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+### Reset the database
+
+```bash
+npm run docker:reset       # wipe volume (full reset)
+npm run docker:up
+npm run db:migrate
+npm run db:seed
+```
+
+### Configure environment
+
+The `.env.example` file contains ready-to-use Docker connection strings. Copy it:
+
+```bash
+cp .env.example .env.local
+```
+
+Key variables:
+
+| Variable | Local Docker value |
+|----------|--------------------|
+| `DATABASE_URL` | `postgresql://confera:confera_dev@localhost:5432/confera_platform` |
+| `AUTH_SECRET` | `dev-secret-change-me-in-production` |
+| `NEXTAUTH_URL` | `http://localhost:3000` |
 
 ## Available Scripts
 
 | Script | Description |
 |--------|-------------|
 | `npm run dev` | Start Next.js development server |
-| `npm run build` | Production build |
+| `npm run dev:local` | Start Docker Postgres + migrate + seed + dev server |
+| `npm run build` | Production build (runs `prisma generate` first) |
 | `npm run start` | Start production server |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript type-check (no emit) |
 | `npm run format` | Format code with Prettier |
 | `npm run format:check` | Check formatting (CI) |
+| `npm run docker:up` | Start Postgres container |
+| `npm run docker:down` | Stop Postgres container |
+| `npm run docker:reset` | Stop and wipe DB volume |
 | `npm run db:generate` | Generate Prisma client |
-| `npm run db:migrate` | Run database migrations |
+| `npm run db:migrate` | Run database migrations (dev) |
+| `npm run db:migrate:deploy` | Run migrations (production) |
+| `npm run db:seed` | Seed demo data |
+| `npm run db:reset` | Reset DB (wipe + re-migrate) |
 | `npm run db:push` | Push schema to DB without migration |
 | `npm run db:studio` | Open Prisma Studio |
 

@@ -1,0 +1,35 @@
+# docker-compose.yml
+#
+# Local development environment for ConferaSystems.
+# Provides a PostgreSQL instance that matches production (Supabase uses PostgreSQL 15).
+#
+# Usage:
+#   docker compose up -d        # start Postgres in background
+#   docker compose down         # stop containers
+#   docker compose down -v      # stop and wipe DB volume (full reset)
+#
+# Copy .env.example to .env.local and set DATABASE_URL to the value below,
+# then run: npm run db:migrate && npm run db:seed
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: confera_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: confera
+      POSTGRES_PASSWORD: confera_dev
+      POSTGRES_DB: confera_platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - confera_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U confera -d confera_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  confera_db_data:
+    driver: local
