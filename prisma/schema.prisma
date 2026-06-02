@@ -1,0 +1,182 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Core Domain Models ───────────────────────────────────────────────────────
+
+model Property {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("free")
+  settings  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    User[]
+  rooms    Room[]
+  bookings Booking[]
+  staff    Staff[]
+
+  @@index([slug])
+}
+
+model User {
+  id         String   @id @default(cuid())
+  propertyId String?
+  email      String   @unique
+  name       String?
+  role       UserRole @default(STAFF)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  property Property? @relation(fields: [propertyId], references: [id])
+  staff    Staff?
+
+  @@index([propertyId])
+  @@index([email])
+}
+
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  STAFF
+  VIEWER
+}
+
+model Room {
+  id          String     @id @default(cuid())
+  propertyId  String
+  name        String
+  type        String
+  capacity    Int        @default(1)
+  amenities   String[]
+  status      RoomStatus @default(AVAILABLE)
+  deletedAt   DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  property     Property  @relation(fields: [propertyId], references: [id])
+  bookings     Booking[]
+  availability Availability[]
+
+  @@index([propertyId])
+  @@index([status])
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  INACTIVE
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  propertyId  String
+  roomId      String
+  guestName   String
+  guestEmail  String?
+  checkIn     DateTime
+  checkOut    DateTime
+  status      BookingStatus @default(PENDING)
+  totalPrice  Decimal       @db.Decimal(10, 2)
+  notes       String?
+  deletedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  room     Room     @relation(fields: [roomId], references: [id])
+  invoices Invoice[]
+
+  @@index([propertyId])
+  @@index([roomId])
+  @@index([checkIn, checkOut])
+  @@index([status])
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+model Availability {
+  id             String   @id @default(cuid())
+  roomId         String
+  date           DateTime @db.Date
+  isAvailable    Boolean  @default(true)
+  blockedReason  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  room Room @relation(fields: [roomId], references: [id])
+
+  @@unique([roomId, date])
+  @@index([roomId, date])
+}
+
+model Staff {
+  id         String   @id @default(cuid())
+  propertyId String
+  userId     String   @unique
+  department String?
+  role       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+  shifts   Shift[]
+
+  @@index([propertyId])
+}
+
+model Shift {
+  id         String   @id @default(cuid())
+  propertyId String
+  staffId    String
+  startsAt   DateTime
+  endsAt     DateTime
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  staff Staff @relation(fields: [staffId], references: [id])
+
+  @@index([staffId])
+  @@index([startsAt])
+}
+
+model Invoice {
+  id         String        @id @default(cuid())
+  propertyId String
+  bookingId  String
+  amount     Decimal       @db.Decimal(10, 2)
+  status     InvoiceStatus @default(DRAFT)
+  issuedAt   DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([propertyId])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
