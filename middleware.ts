@@ -18,8 +18,10 @@ export default auth(function middleware(req: NextRequest & { auth: unknown }) {
   const { nextUrl } = req;
   const isAuthenticated = !!(req as { auth?: unknown }).auth;
 
-  // Protected path prefixes
-  const isProtected = nextUrl.pathname.startsWith("/dashboard");
+  // Protected path prefixes — /dashboard/* and /portal/*
+  const isProtected =
+    nextUrl.pathname.startsWith("/dashboard") ||
+    nextUrl.pathname.startsWith("/portal");
 
   if (isProtected && !isAuthenticated) {
     const signInUrl = new URL("/auth/signin", nextUrl.origin);

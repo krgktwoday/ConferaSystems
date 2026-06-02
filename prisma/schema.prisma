@@ -2,7 +2,8 @@
 // Sprint 1 core domain models: Property, User, Room, Booking
 // Sprint 2 addition: Facility model (Module A — Facility Management)
 // Sprint 3 addition: Booking engine — BookingType, BookingFacility junction (CON-13)
-// Extended models (Availability, Staff, Shift, Invoice) kept for future sprints.
+// Sprint 4 addition: Staff & Shift Scheduling (CON-14) — StaffRole, contractedHours,
+//   ShiftStatus, LeaveRequest, ShiftSwap, StaffingRule
 // See CON-4 for schema design decisions.
 
 generator client {
@@ -25,11 +26,12 @@ model Property {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users      User[]
-  rooms      Room[]
-  bookings   Booking[]
-  staff      Staff[]
-  facilities Facility[]
+  users          User[]
+  rooms          Room[]
+  bookings       Booking[]
+  staff          Staff[]
+  facilities     Facility[]
+  staffingRules  StaffingRule[]
 
   @@index([slug])
 }
@@ -226,36 +228,136 @@ model Availability {
   @@index([roomId, date])
 }
 
-model Staff {
-  id         String   @id @default(cuid())
-  propertyId String
-  userId     String   @unique
-  department String?
-  role       String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+// ─── Sprint 4: Staff & Shift Scheduling (Module C, CON-14) ───────────────────
 
-  property Property @relation(fields: [propertyId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
-  shifts   Shift[]
-
-  @@index([propertyId])
+/// Staff role determines scheduling rules and portal access.
+enum StaffRole {
+  WAITER
+  RECEPTIONIST
+  CLEANING
+  MANAGER
+  KITCHEN
 }
 
+/// Status lifecycle for a shift.
+enum ShiftStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+/// Status for leave requests and shift swap proposals.
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Full staff profile — extends the User with scheduling attributes.
+model Staff {
+  id              String    @id @default(cuid())
+  propertyId      String
+  userId          String    @unique
+  name            String
+  email           String
+  staffRole       StaffRole @default(WAITER)
+  contractedHours Int       @default(40) // weekly hours
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  property      Property       @relation(fields: [propertyId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  shifts        Shift[]
+  leaveRequests LeaveRequest[]
+  swapsProposed ShiftSwap[]    @relation("SwapProposer")
+  swapsTargeted ShiftSwap[]    @relation("SwapTarget")
+
+  @@index([propertyId])
+  @@index([propertyId, staffRole])
+}
+
+/// A scheduled work period for a staff member.
 model Shift {
-  id         String   @id @default(cuid())
+  id         String      @id @default(cuid())
+  propertyId String
+  staffId    String
+  facilityId String?     // optional: shift is tied to a specific facility
+  startsAt   DateTime
+  endsAt     DateTime
+  status     ShiftStatus @default(SCHEDULED)
+  notes      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  staff          Staff       @relation(fields: [staffId], references: [id])
+  swapsAsOrigin  ShiftSwap[] @relation("SwapOriginShift")
+  swapsAsTarget  ShiftSwap[] @relation("SwapTargetShift")
+
+  @@index([propertyId])
+  @@index([staffId])
+  @@index([startsAt])
+  @@index([propertyId, startsAt, endsAt])
+}
+
+/// Leave request submitted by staff; approved/rejected by ADMIN.
+model LeaveRequest {
+  id         String        @id @default(cuid())
   propertyId String
   staffId    String
   startsAt   DateTime
   endsAt     DateTime
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  reason     String?
+  status     RequestStatus @default(PENDING)
+  reviewedBy String?       // userId of the ADMIN who acted
+  reviewedAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   staff Staff @relation(fields: [staffId], references: [id])
 
+  @@index([propertyId])
   @@index([staffId])
-  @@index([startsAt])
+  @@index([propertyId, status])
+}
+
+/// Shift swap proposal: proposer wants to swap their shift with target staff's shift.
+model ShiftSwap {
+  id              String        @id @default(cuid())
+  propertyId      String
+  proposerId      String        // staffId of initiator
+  targetStaffId   String        // staffId of the other party
+  proposerShiftId String        // shift the proposer offers
+  targetShiftId   String        // shift the proposer wants in return
+  status          RequestStatus @default(PENDING)
+  reviewedBy      String?       // userId of ADMIN who approved/rejected
+  reviewedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  proposer      Staff @relation("SwapProposer", fields: [proposerId], references: [id])
+  targetStaff   Staff @relation("SwapTarget", fields: [targetStaffId], references: [id])
+  proposerShift Shift @relation("SwapOriginShift", fields: [proposerShiftId], references: [id])
+  targetShift   Shift @relation("SwapTargetShift", fields: [targetShiftId], references: [id])
+
+  @@index([propertyId])
+  @@index([proposerId])
+  @@index([targetStaffId])
+  @@index([propertyId, status])
+}
+
+/// Per-tenant staffing suggestion rules: how many staff of each role per guest count.
+model StaffingRule {
+  id              String    @id @default(cuid())
+  propertyId      String
+  staffRole       StaffRole
+  guestsPerStaff  Int       @default(10) // 1 staff member per N guests
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@unique([propertyId, staffRole])
+  @@index([propertyId])
 }
 
 model Invoice {

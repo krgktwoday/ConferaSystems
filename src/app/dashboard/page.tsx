@@ -118,6 +118,15 @@ export default async function DashboardPage() {
             <Link href="/dashboard/bookings" className={buttonVariants()}>
               Booking Calendar →
             </Link>
+            <Link href="/dashboard/staff" className={buttonVariants({ variant: "outline" })}>
+              Staff Profiles →
+            </Link>
+            <Link href="/dashboard/shifts" className={buttonVariants({ variant: "outline" })}>
+              Shift Calendar →
+            </Link>
+            <Link href="/portal" className={buttonVariants({ variant: "secondary" })}>
+              Employee Portal →
+            </Link>
           </div>
         </div>
       </div>

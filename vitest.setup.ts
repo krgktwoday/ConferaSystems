@@ -28,6 +28,38 @@ vi.mock("@/lib/prisma", () => ({
     invoice: {
       findMany: vi.fn(),
     },
+    // Sprint 4: Staff & Shift models
+    staff: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    shift: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    leaveRequest: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    shiftSwap: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    staffingRule: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
     // $transaction: called with a callback; we'll override per-test
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
