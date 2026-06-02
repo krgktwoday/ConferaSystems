@@ -8,6 +8,7 @@
  */
 
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -15,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { getServerSession, signOut } from "@/lib/auth";
 import SignOutButton from "./SignOutButton";
 
@@ -105,6 +107,16 @@ export default async function DashboardPage() {
             </ul>
           </CardContent>
         </Card>
+
+        {/* Sprint 2 navigation */}
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-3">Modules</h2>
+          <div className="flex gap-3">
+            <Link href="/dashboard/facilities" className={buttonVariants()}>
+              Manage Facilities →
+            </Link>
+          </div>
+        </div>
       </div>
     </main>
   );

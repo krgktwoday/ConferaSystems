@@ -1,5 +1,6 @@
 // Prisma schema for Hotel/Venue Platform
 // Sprint 1 core domain models: Property, User, Room, Booking
+// Sprint 2 addition: Facility model (Module A — Facility Management)
 // Extended models (Availability, Staff, Shift, Invoice) kept for future sprints.
 // See CON-4 for schema design decisions.
 
@@ -23,10 +24,11 @@ model Property {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users    User[]
-  rooms    Room[]
-  bookings Booking[]
-  staff    Staff[]
+  users      User[]
+  rooms      Room[]
+  bookings   Booking[]
+  staff      Staff[]
+  facilities Facility[]
 
   @@index([slug])
 }
@@ -107,6 +109,43 @@ enum RoomStatus {
   AVAILABLE
   MAINTENANCE
   INACTIVE
+}
+
+// ─── Sprint 2: Facility Management (Module A) ─────────────────────────────────
+
+/// A physical space managed by a property (room, conference hall, outdoor area, etc.)
+model Facility {
+  id           String         @id @default(cuid())
+  propertyId   String
+  name         String
+  type         FacilityType   @default(ROOM)
+  maxCapacity  Int            @default(1)
+  description  String?
+  /// JSON array of equipment strings e.g. ["projector","whiteboard"]
+  equipment    String[]
+  cateringZone String?
+  status       FacilityStatus @default(AVAILABLE)
+  deletedAt    DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId, status])
+  @@index([propertyId, deletedAt])
+}
+
+enum FacilityType {
+  ROOM
+  CONFERENCE_HALL
+  EVENT_SPACE
+  OUTDOOR
+}
+
+enum FacilityStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
 }
 
 model Booking {
