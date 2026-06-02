@@ -1,0 +1,13 @@
+import { defineConfig } from "vitest/config";
+import tsconfigPaths from "vite-tsconfig-paths";
+
+export default defineConfig({
+  plugins: [tsconfigPaths()],
+  test: {
+    environment: "node",
+    globals: true,
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // Mock modules that require a running DB or edge runtime
+    setupFiles: ["./vitest.setup.ts"],
+  },
+});

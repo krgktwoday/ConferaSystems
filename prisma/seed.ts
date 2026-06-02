@@ -4,8 +4,8 @@
  * Development seed: creates one demo Property, one admin User, and 5 demo Rooms.
  * Run with: npm run db:seed
  *
- * Note: passwordHash below is a bcrypt hash of "admin1234" with cost factor 10.
- * Replace with a proper hash in production. This seed is for development only.
+ * Note: passwordHash below is a bcrypt hash of "admin1234" with cost factor 12
+ * (minimum required per CON-5 auth spec). This seed is for development only.
  */
 import { PrismaClient, RoomType, RoomStatus, UserRole } from "@prisma/client";
 
@@ -27,15 +27,15 @@ async function main() {
   console.log(`  ✓ Property: ${property.name} (${property.id})`);
 
   // 2. Create admin user
-  // passwordHash = bcrypt("admin1234", 10) — dev only, not a real secret
+  // passwordHash = bcrypt("admin1234", 12) — dev only, not a real secret
   const user = await prisma.user.upsert({
     where: { email_propertyId: { email: "admin@granddemo.local", propertyId: property.id } },
     update: {},
     create: {
       propertyId: property.id,
       email: "admin@granddemo.local",
-      // bcrypt hash of "admin1234" (saltRounds=10) — change before production
-      passwordHash: "$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FSmhDdWoXehVzJptJ/op0lSsvqNu9Sq",
+      // bcrypt hash of "admin1234" (saltRounds=12) — change before production
+      passwordHash: "$2b$12$XGo10Ywh23cYGJKCX6mWouNtaqRtfTKlK2Q91zB43MPG7djhz63ry",
       role: UserRole.ADMIN,
     },
   });

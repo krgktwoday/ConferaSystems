@@ -1,3 +1,13 @@
+/**
+ * src/app/dashboard/page.tsx
+ *
+ * Dashboard home — protected by middleware.ts (unauthenticated users are
+ * redirected to /auth/signin before reaching this component).
+ *
+ * Demonstrates: getServerSession(), session.user.propertyId, session.user.role
+ */
+
+import { redirect } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -5,7 +15,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import Link from "next/link";
+import { getServerSession, signOut } from "@/lib/auth";
+import SignOutButton from "./SignOutButton";
 
 const STAT_CARDS = [
   { label: "Active Bookings", value: "—", description: "Confirmed reservations" },
@@ -13,7 +24,19 @@ const STAT_CARDS = [
   { label: "Staff on Shift", value: "—", description: "On duty today" },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // Double-check auth in the Server Component (belt-and-suspenders; middleware
+  // already protects this route but this ensures session data is available).
+  const session = await getServerSession();
+  if (!session) {
+    redirect("/auth/signin");
+  }
+
+  async function handleSignOut() {
+    "use server";
+    await signOut({ redirectTo: "/auth/signin" });
+  }
+
   return (
     <main className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
@@ -26,12 +49,19 @@ export default function DashboardPage() {
               Hotel &amp; Venue Platform
             </p>
           </div>
-          <Link
-            href="/"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
-          >
-            Back to Home
-          </Link>
+
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm font-medium text-gray-900">
+                {session.user.email}
+              </p>
+              <p className="text-xs text-gray-500">
+                {session.user.role} &middot; property{" "}
+                <span className="font-mono">{session.user.propertyId.slice(0, 8)}&hellip;</span>
+              </p>
+            </div>
+            <SignOutButton action={handleSignOut} />
+          </div>
         </header>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
@@ -52,24 +82,26 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Platform scaffold ready</CardTitle>
-            <CardDescription>Sprint 1 — Foundation</CardDescription>
+            <CardTitle>Authentication ready</CardTitle>
+            <CardDescription>Sprint 1 — CON-5 complete</CardDescription>
           </CardHeader>
           <CardContent className="prose prose-sm max-w-none text-gray-600">
             <p>
-              Next.js 14 + TypeScript (strict) + Tailwind CSS v4 + Prisma 7 +
-              shadcn/ui are configured and running.
+              NextAuth.js v5 with CredentialsProvider is configured. Your
+              session includes:
             </p>
             <ul className="mt-2 list-disc list-inside space-y-1">
               <li>
-                Authentication will be added in{" "}
-                <strong>CON-5</strong> (NextAuth.js, RBAC)
+                <strong>userId:</strong>{" "}
+                <span className="font-mono text-xs">{session.user.id}</span>
               </li>
               <li>
-                Database migrations will be finalized in{" "}
-                <strong>CON-4</strong> (Prisma + PostgreSQL)
+                <strong>propertyId:</strong>{" "}
+                <span className="font-mono text-xs">{session.user.propertyId}</span>
               </li>
-              <li>Booking engine and property management follow in Sprint 2</li>
+              <li>
+                <strong>role:</strong> {session.user.role}
+              </li>
             </ul>
           </CardContent>
         </Card>
