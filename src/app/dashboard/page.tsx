@@ -108,12 +108,15 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Sprint 2 navigation */}
+        {/* Module navigation */}
         <div className="mt-6">
           <h2 className="text-lg font-semibold text-gray-700 mb-3">Modules</h2>
-          <div className="flex gap-3">
-            <Link href="/dashboard/facilities" className={buttonVariants()}>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/dashboard/facilities" className={buttonVariants({ variant: "outline" })}>
               Manage Facilities →
+            </Link>
+            <Link href="/dashboard/bookings" className={buttonVariants()}>
+              Booking Calendar →
             </Link>
           </div>
         </div>

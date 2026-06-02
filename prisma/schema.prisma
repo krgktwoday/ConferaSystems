@@ -1,6 +1,7 @@
 // Prisma schema for Hotel/Venue Platform
 // Sprint 1 core domain models: Property, User, Room, Booking
 // Sprint 2 addition: Facility model (Module A — Facility Management)
+// Sprint 3 addition: Booking engine — BookingType, BookingFacility junction (CON-13)
 // Extended models (Availability, Staff, Shift, Invoice) kept for future sprints.
 // See CON-4 for schema design decisions.
 
@@ -129,7 +130,8 @@ model Facility {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
-  property Property @relation(fields: [propertyId], references: [id])
+  property         Property          @relation(fields: [propertyId], references: [id])
+  bookingFacilities BookingFacility[]
 
   @@index([propertyId, status])
   @@index([propertyId, deletedAt])
@@ -148,14 +150,18 @@ enum FacilityStatus {
   MAINTENANCE
 }
 
+// ─── Sprint 3: Booking Engine (Module B, CON-13) ──────────────────────────────
+
 model Booking {
   id         String        @id @default(cuid())
   propertyId String
-  roomId     String
+  /// Legacy room link — kept for backward compat; new bookings use BookingFacility
+  roomId     String?
   guestName  String
   guestEmail String?
   checkIn    DateTime
   checkOut   DateTime
+  type       BookingType   @default(STAY)
   status     BookingStatus @default(PENDING)
   totalPrice Decimal       @db.Decimal(10, 2)
   notes      String?
@@ -163,14 +169,37 @@ model Booking {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
-  property Property  @relation(fields: [propertyId], references: [id])
-  room     Room      @relation(fields: [roomId], references: [id])
-  invoices Invoice[]
+  property          Property          @relation(fields: [propertyId], references: [id])
+  room              Room?             @relation(fields: [roomId], references: [id])
+  invoices          Invoice[]
+  bookingFacilities BookingFacility[]
 
   // Compound index for availability range queries
   @@index([propertyId, checkIn, checkOut])
+  @@index([propertyId, status])
   @@index([roomId])
   @@index([status])
+}
+
+/// Junction table linking a booking to one or more facilities (multi-facility booking)
+model BookingFacility {
+  id         String   @id @default(cuid())
+  bookingId  String
+  facilityId String
+  createdAt  DateTime @default(now())
+
+  booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@unique([bookingId, facilityId])
+  @@index([bookingId])
+  @@index([facilityId])
+}
+
+enum BookingType {
+  STAY
+  CONFERENCE
+  EVENT
 }
 
 enum BookingStatus {
