@@ -1,22 +1,25 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Prisma schema for Hotel/Venue Platform
+// Sprint 1 core domain models: Property, User, Room, Booking
+// Extended models (Availability, Staff, Shift, Invoice) kept for future sprints.
+// See CON-4 for schema design decisions.
 
 generator client {
   provider = "prisma-client-js"
 }
 
+// NOTE: datasource URL is managed via prisma.config.ts (Prisma 7 style).
+// The `datasource db` block here only declares the provider for type generation.
 datasource db {
   provider = "postgresql"
 }
 
-// ─── Core Domain Models ───────────────────────────────────────────────────────
+// ─── Core Domain: Sprint 1 ────────────────────────────────────────────────────
 
 model Property {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
-  plan      String   @default("free")
-  settings  Json?
+  timezone  String   @default("UTC")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -29,23 +32,23 @@ model Property {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  propertyId String?
-  email      String   @unique
-  name       String?
-  role       UserRole @default(STAFF)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  propertyId   String
+  email        String
+  passwordHash String
+  role         UserRole @default(STAFF)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  property Property? @relation(fields: [propertyId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
   staff    Staff?
 
+  // Unique email per property (multi-tenant scoping)
+  @@unique([email, propertyId])
   @@index([propertyId])
-  @@index([email])
 }
 
 enum UserRole {
-  SUPERADMIN
   ADMIN
   STAFF
   VIEWER
@@ -55,70 +58,76 @@ model Room {
   id          String     @id @default(cuid())
   propertyId  String
   name        String
-  type        String
+  type        RoomType   @default(BEDROOM)
   capacity    Int        @default(1)
-  amenities   String[]
+  description String?
   status      RoomStatus @default(AVAILABLE)
   deletedAt   DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  property     Property  @relation(fields: [propertyId], references: [id])
+  property     Property       @relation(fields: [propertyId], references: [id])
   bookings     Booking[]
   availability Availability[]
 
-  @@index([propertyId])
-  @@index([status])
+  // Composite index for availability queries
+  @@index([propertyId, status])
+}
+
+enum RoomType {
+  BEDROOM
+  CONFERENCE
+  EVENT
 }
 
 enum RoomStatus {
   AVAILABLE
-  OCCUPIED
   MAINTENANCE
   INACTIVE
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  propertyId  String
-  roomId      String
-  guestName   String
-  guestEmail  String?
-  checkIn     DateTime
-  checkOut    DateTime
-  status      BookingStatus @default(PENDING)
-  totalPrice  Decimal       @db.Decimal(10, 2)
-  notes       String?
-  deletedAt   DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id         String        @id @default(cuid())
+  propertyId String
+  roomId     String
+  guestName  String
+  guestEmail String?
+  checkIn    DateTime
+  checkOut   DateTime
+  status     BookingStatus @default(PENDING)
+  totalPrice Decimal       @db.Decimal(10, 2)
+  notes      String?
+  deletedAt  DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
-  property Property @relation(fields: [propertyId], references: [id])
-  room     Room     @relation(fields: [roomId], references: [id])
+  property Property  @relation(fields: [propertyId], references: [id])
+  room     Room      @relation(fields: [roomId], references: [id])
   invoices Invoice[]
 
-  @@index([propertyId])
+  // Compound index for availability range queries
+  @@index([propertyId, checkIn, checkOut])
   @@index([roomId])
-  @@index([checkIn, checkOut])
   @@index([status])
 }
 
 enum BookingStatus {
   PENDING
   CONFIRMED
-  CHECKED_IN
-  CHECKED_OUT
   CANCELLED
+  COMPLETED
 }
 
+// ─── Extended Models (Sprint 2+) ──────────────────────────────────────────────
+
 model Availability {
-  id             String   @id @default(cuid())
-  roomId         String
-  date           DateTime @db.Date
-  isAvailable    Boolean  @default(true)
-  blockedReason  String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(cuid())
+  roomId        String
+  date          DateTime @db.Date
+  isAvailable   Boolean  @default(true)
+  blockedReason String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   room Room @relation(fields: [roomId], references: [id])
 
