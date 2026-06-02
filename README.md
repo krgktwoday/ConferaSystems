@@ -96,24 +96,65 @@ prisma/
 
 ## Deployment
 
-### Vercel (Frontend + API)
+### 1. Provision a Supabase database
 
-1. Connect your GitHub repo to [Vercel](https://vercel.com)
-2. Set environment variables in the Vercel project settings:
-   - `DATABASE_URL` — your production PostgreSQL connection string
-   - `NEXTAUTH_SECRET` — a random 32-character secret
-   - `NEXTAUTH_URL` — your production URL (e.g. `https://your-app.vercel.app`)
-3. Vercel will automatically deploy previews on every pull request and deploy `main` to production
+1. Create a project at [supabase.com](https://supabase.com).
+2. Go to **Project Settings → Database → Connection string** and copy the **Transaction pooler** connection string (use port `6543` and `?pgbouncer=true`). This is your `DATABASE_URL` for Vercel runtime.
+3. For running migrations, use the **Session pooler** or the direct connection string (port `5432`). Keep this as `DIRECT_URL` — never set it in Vercel env vars, use it only from your local machine or CI.
+4. Apply migrations from your local machine:
+   ```bash
+   DATABASE_URL="<your-direct-connection-string>" npx prisma migrate deploy
+   ```
+5. (Optional) Apply seed data:
+   ```bash
+   DATABASE_URL="<your-direct-connection-string>" npm run db:seed
+   ```
 
-### Database (Railway)
+### 2. Deploy to Vercel
 
-1. Create a PostgreSQL instance on [Railway](https://railway.app)
-2. Copy the `DATABASE_URL` from Railway → Project → Variables
-3. Run `npm run db:migrate` against the production DB on first deploy
+1. Import your GitHub repo at [vercel.com/new](https://vercel.com/new).
+2. Vercel will auto-detect Next.js. The build command (`npm run build`) already runs `prisma generate` before building.
+3. Add the following **Environment Variables** in the Vercel dashboard (Settings → Environment Variables):
+
+   | Variable | Description |
+   |----------|-------------|
+   | `DATABASE_URL` | Supabase Transaction Pooler connection string |
+   | `AUTH_SECRET` | Random 32-char secret (`openssl rand -base64 32`) |
+   | `NEXTAUTH_URL` | Your production URL, e.g. `https://your-app.vercel.app` |
+   | `RESEND_API_KEY` | (Optional) Resend API key for email confirmations |
+   | `EMAIL_FROM` | (Optional) Verified sender email address |
+
+4. Deploy. Vercel automatically:
+   - Deploys **preview environments** on every pull request.
+   - Deploys **production** on every push to `main`.
+
+### 3. GitHub Actions (CI/CD)
+
+The `.github/workflows/ci.yml` pipeline runs on every PR and push to `main`:
+- **Lint → Typecheck → Build** on every PR.
+- **Preview deploy** to Vercel on PRs (requires `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` secrets in GitHub).
+- **Production deploy** to Vercel on push to `main`.
+
+Add these GitHub repository secrets:
+
+| Secret | Where to get it |
+|--------|----------------|
+| `VERCEL_TOKEN` | Vercel → Account Settings → Tokens |
+| `VERCEL_ORG_ID` | Vercel → Team/Account Settings → General (Team ID) |
+| `VERCEL_PROJECT_ID` | Vercel → Project Settings → General |
+
+### Health Check
+
+After deployment, verify the app is running:
+
+```bash
+curl https://your-app.vercel.app/api/health
+# → {"status":"ok","timestamp":"2026-..."}
+```
 
 ## CI
 
-GitHub Actions runs lint + typecheck + build on every pull request (`.github/workflows/ci.yml`).
+GitHub Actions runs lint + typecheck + build on every pull request, and triggers Vercel preview/production deploys (`.github/workflows/ci.yml`).
 
 ## Architecture
 
